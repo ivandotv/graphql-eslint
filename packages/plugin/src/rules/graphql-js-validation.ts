@@ -1,7 +1,6 @@
 import { AST } from 'eslint';
 import {
   Kind,
-  ASTNode,
   TypeInfo,
   DocumentNode,
   GraphQLSchema,
@@ -14,16 +13,9 @@ import {
 } from 'graphql';
 import { validateSDL } from 'graphql/validation/validate';
 import { GraphQLESLintRule, GraphQLESLintRuleContext } from '../types';
-import {
-  getLocation,
-  getGraphQLSchemaToExtend,
-  requireGraphQLSchemaFromContext,
-  requireSiblingsOperations,
-} from '../utils';
-import { GraphQLESTreeNode } from '../estree-parser';
+import { getLocation, requireGraphQLSchemaFromContext, requireSiblingsOperations } from '../utils';
 
 function validateDocument(
-  sourceNode: GraphQLESTreeNode<ASTNode>,
   context: GraphQLESLintRuleContext,
   schema: GraphQLSchema | null = null,
   documentNode: DocumentNode,
@@ -65,7 +57,8 @@ function validateDocument(
     }
   } catch (e) {
     context.report({
-      node: sourceNode,
+      // Report on first character
+      loc: { column: 0, line: 1 },
       message: e.message,
     });
   }
@@ -181,21 +174,15 @@ const validationToRule = (
           );
           return {};
         }
-
-        let schema: GraphQLSchema;
-        if (docs.requiresSchemaToExtend) {
-          schema = getGraphQLSchemaToExtend(context);
-        }
-        if (docs.requiresSchema) {
-          schema = requireGraphQLSchemaFromContext(ruleId, context);
-        }
+        const schema = docs.requiresSchema ? requireGraphQLSchemaFromContext(ruleId, context) : null;
 
         return {
           Document(node) {
             const documentNode = getDocumentNode
               ? getDocumentNode({ ruleId, context, schema, node: node.rawNode() })
               : node.rawNode();
-            validateDocument(node, context, schema, documentNode, ruleFn, docs.requiresSchemaToExtend);
+
+            validateDocument(context, schema, documentNode, ruleFn, docs.requiresSchemaToExtend);
           },
         };
       },
@@ -390,6 +377,7 @@ export const GRAPHQL_JS_VALIDATIONS: Record<string, GraphQLESLintRule> = Object.
     category: 'Schema',
     description: `A type extension is only valid if the type is defined and has the same kind.`,
     recommended: false, // TODO: enable after https://github.com/dotansimha/graphql-eslint/issues/787 will be fixed
+    requiresSchema: true,
     requiresSchemaToExtend: true,
   }),
   validationToRule('provided-required-arguments', 'ProvidedRequiredArguments', {

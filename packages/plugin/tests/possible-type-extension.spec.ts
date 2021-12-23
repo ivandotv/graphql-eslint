@@ -5,15 +5,12 @@ const ruleTester = new GraphQLRuleTester();
 
 ruleTester.runGraphQLTests('possible-type-extension', rules['possible-type-extension'], {
   valid: [
-    /* GraphQL */ `
-      type User {
-        id: ID!
-      }
-
-      extend type User {
-        name: String!
-      }
-    `,
+    {
+      code: 'extend type User { name: String }',
+      parserOptions: {
+        schema: 'type User { id: ID }',
+      },
+    },
     {
       name: 'when schema is separate into graphql files',
       filename: join(__dirname, 'mocks/possible-type-extension/separate-graphql-files/extend-type-user.gql'),
@@ -45,15 +42,10 @@ ruleTester.runGraphQLTests('possible-type-extension', rules['possible-type-exten
   ],
   invalid: [
     {
-      code: /* GraphQL */ `
-        type User {
-          id: ID!
-        }
-
-        extend type OtherUser {
-          name: String!
-        }
-      `,
+      code: 'extend type OtherUser { name: String }',
+      parserOptions: {
+        schema: 'type User { id: ID }',
+      },
       errors: [{ message: 'Cannot extend type "OtherUser" because it is not defined.' }],
     },
   ],
