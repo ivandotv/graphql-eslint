@@ -15,9 +15,17 @@ export function parse(code: string, options?: ParserOptions): Linter.ESLintParse
 
 export function parseForESLint(code: string, options: ParserOptions = {}): GraphQLESLintParseResult {
   const gqlConfig = loadGraphQLConfig(options);
-  const schema = getSchema(options, gqlConfig);
+  let schema
+  try {
+    schema = getSchema(options, gqlConfig);
+  } catch (e) {
+    e.message = `[graphql-eslint] Error while loading schema: ${e.message}`;
+    // eslint-disable-next-line no-console
+    console.error(e)
+  }
+
   const parserServices: ParserServices = {
-    hasTypeInfo: schema !== null,
+    hasTypeInfo: Boolean(schema),
     schema,
     siblingOperations: getSiblingOperations(options, gqlConfig),
     reachableTypes: getReachableTypes,
@@ -49,6 +57,7 @@ export function parseForESLint(code: string, options: ParserOptions = {}): Graph
       },
     };
   } catch (e) {
+    e.message = `[graphql-eslint] ${e.message}`;
     // In case of GraphQL parser error, we report it to ESLint as a parser error that matches the requirements
     // of ESLint. This will make sure to display it correctly in IDEs and lint results.
     if (e instanceof GraphQLError) {
@@ -56,14 +65,10 @@ export function parseForESLint(code: string, options: ParserOptions = {}): Graph
         index: e.positions[0],
         lineNumber: e.locations[0].line,
         column: e.locations[0].column,
-        message: `[graphql-eslint]: ${e.message}`,
+        message: e.message,
       };
-
       throw eslintError;
     }
-
-    e.message = `[graphql-eslint]: ${e.message}`;
-
     throw e;
   }
 }
